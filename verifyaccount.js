@@ -5,6 +5,7 @@ import config from 'config';
 
 const ACCOUNT_ACTIVATED = 'Your account is now active.';
 const ACCOUNT_ALREADY_ACTIVATED = 'Your account has already been activated.';
+const INVALID_CONFIRMATION_TOKEN = 'We cannot find an account matching the confirmation email.';
 
 const logger = new (winston.Logger)({
     transports: [
@@ -77,6 +78,8 @@ imaps.connect(conn).then(connection => {
                                 logger.info(`The account "${to}" has been activated.`);
                             } else if (body.indexOf(ACCOUNT_ALREADY_ACTIVATED) >= 0) {
                                 logger.info(`The account "${to}" has already been activated.`);
+                            } else if (body.indexOf(INVALID_CONFIRMATION_TOKEN) >= 0) {
+                                logger.warn(`Confirmation token not found for "${to}".`);
                             } else {
                                 console.log(body);
                                 process.exit(1);
