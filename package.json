@@ -1,0 +1,29 @@
+{
+  "name": "node-PalletTown",
+  "version": "0.1.0",
+  "description": "Create and verify accounts on PTC",
+  "main": "index.js",
+  "scripts": {
+    "verify": "babel-node verifyaccount.js"
+  },
+  "engines": {
+    "node": "7.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DennyLoko/node-PalletTown"
+  },
+  "author": "Danniel Magno",
+  "license": "MIT",
+  "dependencies": {
+    "babel-cli": "^6.23.0",
+    "babel-preset-es2015": "^6.22.0",
+    "babel-preset-es2015-node5": "^1.2.0",
+    "babel-preset-stage-3": "^6.22.0",
+    "config": "^1.25.1",
+    "imap-simple": "^3.1.0",
+    "request": "^2.80.0",
+    "request-promise-native": "^1.0.3",
+    "winston": "^2.3.1"
+  }
+}
