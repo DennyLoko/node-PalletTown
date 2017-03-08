@@ -35,7 +35,7 @@ imaps.connect(conn).then(connection => {
     return connection.openBox('INBOX').then(() => {
         let criteria = [
             'UNSEEN',
-            [ 'SUBJECT', 'Pokémon Trainer Club Activation' ]
+            [ 'SUBJECT', 'Trainer Club Activation' ]
         ];
         
         let fetchOpts = {
