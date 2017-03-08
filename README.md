@@ -23,6 +23,15 @@ As this tool connect through IMAP, it should work on any email host platform, as
 Gmail or Hotmail. During the development, I only tested on Gmail with a custom
 domain.
 
+To start the email validation, run the following command:
+```
+npm run verify
+```
+
+It should take a little bit to mark all emails as read, if you have a large number
+of emails. To see what the command is doing, set the `verbosity` to `debug` on
+your config file.
+
 ## Configuration
 
 Copy `config/default.dist.json` to `config/default.json` and edit as appropriate.
