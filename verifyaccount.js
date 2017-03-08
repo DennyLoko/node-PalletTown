@@ -21,7 +21,11 @@ const logger = new (winston.Logger)({
     ],
 });
 
-const conn = {imap: config.get('imap')};
+let conn = {imap: config.get('imap')};
+
+//  Fallback to avoid errors, because simple-imap tries to modify this value,
+// which is read-only if it come from the config.
+conn.imap.authTimeout = config.get('imap.timeout');
 
 logger.info('Connecting to IMAP server...');
 imaps.connect(conn).then(connection => {
