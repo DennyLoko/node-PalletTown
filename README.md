@@ -11,10 +11,16 @@ only for fun purposes.
 - [ ] Account creation
 - [x] Account validation
 
+### Prerequisites
+
+- Node.js
+- Selenium
+- Webdriver (ChromeDriver, PhantomJS, etc...)
+
 ### Current status
 
 Right now this project only verifies the accounts, you still need to manually
-create the accounts.
+create the accounts, or use [Kinan City](https://github.com/drallieiv/KinanCity).
 Account creation is on the roadmap, should be done soon.
 
 ### Account validation
