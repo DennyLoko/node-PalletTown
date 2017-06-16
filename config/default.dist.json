@@ -5,7 +5,16 @@
         "host": "imap.gmail.com",
         "port": 993,
         "tls": true,
-        "timeout": 3000
+        "timeout": 3000,
+        "start": 0,
+        "batch": 5
     },
-    "verbosity": "info"
+    "mysql": {
+        "host": "",
+        "user": "",
+        "password": "",
+        "database": ""
+    },
+    "verbosity": "info",
+    "default_password": ""
 }
