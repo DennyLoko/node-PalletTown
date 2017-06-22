@@ -1,13 +1,16 @@
-import {Builder, By, until} from 'selenium-webdriver';
-import imaps from 'imap-simple'
-import winston from 'winston'
 import config from 'config'
+import FakeSelenium from './fakeselenium'
+import imap from 'imap-simple'
 import mysql from 'mysql'
+import request from 'request-promise-native';
+import {Builder, By, until} from 'selenium-webdriver';
+import winston from 'winston'
 
 const ACCOUNT_ACTIVATED = 'Your account is now active.'
 const ACCOUNT_ALREADY_ACTIVATED = 'Your account has already been activated.'
 const INVALID_CONFIRMATION_TOKEN = 'We cannot find an account matching the confirmation email.'
 const VERIFICATION_EMAIL_SENT = 'We have sent you an email to verify your account.'
+const RATE_LIMITING_ERROR = '403 Forbidden'
 const UNHANDLED_ERROR = 'Unhandled error.'
 
 const logger = new (winston.Logger)({
@@ -90,9 +93,45 @@ const updateAccount = (conn, activated, id) => {
   })
 }
 
+const newRequest = (url) => {
+  return new Promise((resolve, reject) => {
+    if (config.get('request_type') == 'selenium') {
+      const driver = new Builder().forBrowser(config.get('webdriver')).build()
+      driver.get(url)
+      
+      const t = 5 * 1000
+      
+      driver.wait(until.elementLocated(By.id('sign-up-theme')), t).then(() => {
+        driver.getPageSource().then(body => {
+          resolve([body, driver])
+        }).catch(err => {
+          reject(err)
+        })
+      }).catch(err => {
+        driver.getTitle().then(title => {
+          if (title === RATE_LIMITING_ERROR) {
+            reject({statusCode: 503})
+          } else {
+            reject(err)
+          }
+        })
+      })
+    } else {
+      const req = request(url)
+      req.then(body => {
+        resolve([body, new FakeSelenium()])
+      }).catch(err => {
+        reject(err)
+      })
+    }
+  })
+}
+
 const requestNewValidationEmail = (driver, link, login, password) => {
   return new Promise((resolve, reject) => {
-    driver.wait(until.elementLocated(By.id('sign-up-theme')), 5 * 1000).then(() => {
+    const t = 5 * 1000
+    
+    driver.wait(until.elementLocated(By.id('sign-up-theme')), t).then(() => {
       logger.info(`Asking a new verification email for the account ${login}...`)
       
       logger.debug(`Writing username...`)
@@ -106,7 +145,7 @@ const requestNewValidationEmail = (driver, link, login, password) => {
       logger.debug(`Submiting form...`)
       pwdElem.submit()
       
-      driver.wait(until.elementLocated(By.id('sign-up-theme')), 5 * 1000).then(() => {
+      driver.wait(until.elementLocated(By.id('sign-up-theme')), t).then(() => {
         driver.getPageSource().then(body => {
           if (body.indexOf(VERIFICATION_EMAIL_SENT) >= 0) {
             logger.info(`Success requesting the new verification email for the account ${login}!`)
@@ -134,42 +173,43 @@ const requestNewValidationEmail = (driver, link, login, password) => {
 
 const validateAccount = (link, id, login, password) => {
   return new Promise((resolve, reject) => {
-    const driver = new Builder().forBrowser(config.get('webdriver')).build()
-    driver.get(link)
-    
-    driver.wait(until.elementLocated(By.id('sign-up-theme')), 5 * 1000).then(() => {
-      driver.getPageSource().then(body => {
-        if (body.indexOf(ACCOUNT_ACTIVATED) >= 0) {
-          logger.info(`The account "${login}"(${id}) has been activated.`)
-          driver.quit()
-          
-          resolve(['Y', id])
-        } else if (body.indexOf(ACCOUNT_ALREADY_ACTIVATED) >= 0) {
-          logger.info(`The account "${login}"(${id}) has already been activated.`)
-          driver.quit()
-          
-          resolve(['Y', id])
-        } else if (body.indexOf(INVALID_CONFIRMATION_TOKEN) >= 0) {
-          logger.info(`The activation link for "${login}"(${id}) has already expired.`)
-          
-          requestNewValidationEmail(driver, link, login, password).then(() => {
-            resolve(['N', id])
-          }).catch(err => {
-            reject(err)
-          })
-        }
-      }).catch(err => {
-        reject(err)
-      })
-    }).catch(err => {
-      logger.error(`Error 503 while activating the account "${id}". Waiting ~1min...`);
-      driver.quit()
+    newRequest(link).then(data => {
+      let body
+      let driver
+      [body, driver] = data
       
-      setTimeout(() => {
-        validateAccount(link, id, login, password).then(details => {
-          resolve(details)
+      if (body.indexOf(ACCOUNT_ACTIVATED) >= 0) {
+        logger.info(`The account "${login}"(${id}) has been activated.`)
+        driver.quit()
+        
+        resolve(['Y', id])
+      } else if (body.indexOf(ACCOUNT_ALREADY_ACTIVATED) >= 0) {
+        logger.info(`The account "${login}"(${id}) has already been activated.`)
+        driver.quit()
+        
+        resolve(['Y', id])
+      } else if (body.indexOf(INVALID_CONFIRMATION_TOKEN) >= 0) {
+        logger.info(`The activation link for "${login}"(${id}) has already expired.`)
+        
+        requestNewValidationEmail(driver, link, login, password).then(() => {
+          resolve(['N', id])
+        }).catch(err => {
+          reject(err)
         })
-      }, 65000)
+      }
+    }).catch(err => {
+      if (typeof err.statusCode !== undefined && err.statusCode === 503) {
+        logger.error(`Error 503 while activating the account "${id}". Waiting ~1min...`);
+        
+        setTimeout(() => {
+          validateAccount(link, id, login, password).then(details => {
+            resolve(details)
+          })
+        }, 65000)
+      } else {
+        console.log(err)
+        process.exit(0)
+      }
     })
   })
 }
@@ -269,7 +309,7 @@ const searchMessages = (imap_connection, start, mysql_connection) => {
 }
 
 logger.info('Connecting to IMAP server...')
-imaps.connect(conn).then(connection => {
+imap.connect(conn).then(connection => {
   logger.debug('Connected!')
   
   connection.on('error', (err) => {

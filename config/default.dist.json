@@ -16,5 +16,7 @@
         "database": ""
     },
     "verbosity": "info",
-    "default_password": ""
+    "default_password": "",
+    "request_type": "request",
+    "webdriver": "phantomjs"
 }
